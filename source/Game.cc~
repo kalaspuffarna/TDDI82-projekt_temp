@@ -1,0 +1,41 @@
+#include "../include/Game.h"
+#include "../include/constants.h"
+
+Game::Game() : window{sf::VideoMode{WIDTH, HEIGHT}, "Projekt", sf::Style::Fullscreen}, states{}, current_state{START_STATE}, running{true}
+{
+    states.insert(std::pair<int,
+                  std::unique_ptr<State>>({START_STATE,
+                                           std::make_unique<StartState>()}));
+    states.insert(std::pair<int, std::unique_ptr<State>>({GAME_STATE, std::make_unique<GameState>()}));
+
+    //states.insert(std::pair<int, std::unique_ptr<State>>({GAME_STATE, std::make_unique<GameOverState>()}));
+}
+
+void Game::start() {
+    // Konfigurera StartState och GameState
+    states.at(0)->handle();
+    states.at(1)->handle();
+    while(running) {
+        //så man kan stänga av spelet
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)) {
+             running = false;
+        }
+        
+        handle_events();
+        states.at(current_state)->update();
+        window.clear();
+        states.at(current_state)->render(window);
+        window.display();
+        current_state = states.at(current_state)->get_next_state();
+    }
+}
+
+void Game::handle_events() {
+    sf::Event event;
+    while(window.pollEvent(event)) {
+        if(event.type == sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)) {
+            running = false;
+        }//funkar inte? (stänger inte av spelet)
+        states.at(current_state)->handle_event(event);
+    }
+}

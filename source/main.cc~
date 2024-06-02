@@ -1,0 +1,35 @@
+#include "../include/Entity.h"
+#include "../include/State.h"
+#include "../include/Game.h"
+#include "../include/rcs.h"
+
+int main() {
+    Game game{};
+    game.start();
+    return 0;
+}
+
+//load funkar i exepelkoden
+
+// int main()
+// {
+//     sf::RenderWindow window(sf::VideoMode(200, 200), "SFML works!");
+//     sf::Sprite sprite;
+//     sprite.setTexture(Util::Manager::load("sprites/hero.png"));
+
+//     while (window.isOpen())
+//     {
+//         sf::Event event;
+//         while (window.pollEvent(event))
+//         {
+//             if (event.type == sf::Event::Closed)
+//                 window.close();
+//         }
+
+//         window.clear();
+//         window.draw(sprite);
+//         window.display();
+//     }
+
+//     return 0;
+//}

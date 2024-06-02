@@ -1,0 +1,221 @@
+#include "../include/Entity.h"
+#include "../include/rcs.h"
+#include <cmath>
+#include <iostream>
+
+
+Entity::Entity() : speed{0},
+                   curr_health{0},
+                   max_health{0},
+                   damage{15},
+                   pos{},
+                   radius{50},
+                   sprite{},
+                   texture{}
+{
+    //sprite.setPosition(500, 250);
+    //sprite.setOrigin(50, 50);
+    //sprite.setOrigin(radius, radius);
+
+}
+
+Entity::~Entity()
+{
+}
+
+int Entity::get_currhealth() {
+    return curr_health;
+}
+
+Hero::Hero()
+    : current_movement{}, curr_XP{0}, level{0}, power_ups{} 
+{
+    sprite.setTexture(Util::Manager::load("../resources/sprites/hero.png"));
+    sprite.setPosition(1000, 400);
+    sprite.setOrigin(50, 50);
+    sprite.setTextureRect(sf::IntRect(10, 10, 256, 256));
+}
+
+sf::Vector2f Entity::get_position() const
+{
+    return sprite.getPosition();
+}
+
+void Entity::sub_health(int hp)
+{
+    curr_health -= hp;
+}
+
+float Entity::getRadius() const
+{
+    return sprite.getGlobalBounds().width / 2;
+}
+
+bool Entity::handle_collision(Entity const &rhs)
+{
+    return static_cast<int>(
+               std::sqrt(
+                   std::pow(static_cast<int>(get_position().x - rhs.get_position().x), 2) +
+                   std::pow(static_cast<int>(get_position().y - rhs.get_position().y), 2))) <= getRadius() * 2;
+}
+
+int Entity::get_damage() const
+{
+    return 1;
+}
+
+void Hero::move()
+{
+    std::vector<std::pair<sf::Keyboard::Key, sf::Vector2i>> v{
+        {sf::Keyboard::Right, {1, 0}},
+        {sf::Keyboard::Left, {-1, 0}},
+        {sf::Keyboard::Up, {0, -1}},
+        {sf::Keyboard::Down, {0, 1}}};
+    current_movement.clear();
+    for (auto dir : v)
+    {
+        if (sf::Keyboard::isKeyPressed(dir.first))
+        {
+            sprite.move(dir.second.x, dir.second.y);
+            current_movement.push_back(dir.second);
+        }
+    }
+}
+
+sf::Vector2f Hero::get_origin() const {
+    return sprite.getOrigin();
+}
+
+std::vector<sf::Vector2i> Hero::get_current_movement() const
+{
+    return current_movement;
+}
+
+void Hero::level_up()
+{
+    int xp_lvl{100};
+    if (curr_XP == xp_lvl)
+    {
+        curr_XP = 0;
+        ++level;
+        xp_lvl += 100;
+    }
+}
+void Hero::add_xp(int const& xp)
+{
+    curr_XP += xp;
+}
+
+int Hero::get_damage() const
+{
+   return damage*level; 
+}
+
+sf::Sprite Entity::get_sprite()
+{
+    return sprite;
+}
+
+Powerups::Powerups() : active{true} // borde vara false och sättas till true om den används
+{
+}
+
+bool Powerups::get_active() const
+{
+    return active;
+}
+
+void Powerups::active_switch()
+{
+    if(active) active =false;
+    else active = true;
+}
+
+
+Sythe::Sythe() : sythe_texture{},
+		 sythe_sprite{}
+{
+    if(!(sythe_texture.loadFromFile("../resources/sprites/scythe.png"))) {
+	// Kasta error
+    }
+    //sythe_sprite.setOrigin(100, 100);
+    
+    sythe_sprite.setTexture(Util::Manager::load("../resources/sprites/scythe.png"));
+}
+        
+
+void Sythe::spawn(Hero const &hero)
+{
+    sythe_sprite.setOrigin(hero.get_origin().x, hero.get_origin().y + 150);
+    //sythe_sprite.setPosition(hero.get_position().x - hero.getRadius() * 3, hero.get_position().y);
+    sythe_sprite.setPosition(hero.get_position().x + 350, hero.get_position().y);
+}
+
+void Sythe::move(std::vector<sf::Vector2i> &&plr_movement)
+{
+    int speed{5};
+    sf::Vector2f movedir;
+    for (auto i : plr_movement)
+    {
+        sythe_sprite.move(i.x, i.y); // sprite
+    }
+    movedir.x = -sin((M_PI / 180) * sythe_sprite.getRotation()) * speed;
+    movedir.y = cos((M_PI / 180) * sythe_sprite.getRotation()) * speed;
+    sythe_sprite.move(movedir.x, movedir.y);  // sprite
+    sythe_sprite.rotate(1);                   // sprite
+}
+
+sf::Sprite Sythe::get_sprite() {
+    return sythe_sprite;
+} 
+
+Enemy::Enemy() : damage_factor{}, current_movement{}
+{
+    sprite.setTexture(Util::Manager::load("../resources/sprites/enemy.png"));
+    sprite.setOrigin(50, 50);
+    sprite.setTextureRect(sf::IntRect(0, 0, 200, 200));
+}
+
+void Enemy::spawn()
+{
+    int seed{592};
+    int seed2{499};
+    int randnum1{rand() % seed};
+    int randnum2{rand() % seed2};
+    
+    sprite.setPosition(randnum1, randnum2);
+    
+}
+
+
+void Enemy::move(sf::Vector2f const& hero_pos)
+{
+    sf::Vector2f totalMovement{};
+    
+    totalMovement.x = hero_pos.x - sprite.getPosition().x;
+    totalMovement.y = hero_pos.y - sprite.getPosition().y;
+    current_movement = totalMovement;
+    sprite.move(totalMovement.x /300,totalMovement.y /300);
+}
+
+void Enemy::knockback()
+{
+    sprite.move(current_movement.x * -1,current_movement.y * -1);
+}
+void Enemy::knockback(Enemy const &rhs)
+{
+    sf::Vector2f totalMovement{};
+    totalMovement.x = rhs.get_position().x - sprite.getPosition().x;
+    totalMovement.y = rhs.get_position().y - sprite.getPosition().y;
+    sprite.move(totalMovement.x * -0.1, totalMovement.y * -0.1);
+}
+
+
+
+// void Enemy::move(sf::Vector2f const &hero_pos)
+// {
+//     sf::Vector2f totalMovement{};
+//     totalMovement.x = hero_pos.x - sprite.getPosition().x;
+//     totalMovement.y = hero_pos.y - sprite.getPosition().y;
+//     sprite.move(totalMovement.x / 300, totalMovement.y / 300);
+// }

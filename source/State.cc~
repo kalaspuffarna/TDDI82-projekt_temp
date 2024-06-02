@@ -1,0 +1,277 @@
+#include "../include/State.h"
+#include "../include/Entity.h"
+#include "../include/rcs.h"
+#include <iostream>
+#include <typeinfo>
+
+
+//Hej jag heter Denis och jag vet inte vad unique_ptr är :(
+                  
+GameState::GameState()
+    : Entity_vector{},
+      background_texture{},
+      background{},
+      end_game{}
+{
+    background.setTexture(Util::Manager::load("resources/sprites/background.png"));
+    background.setTextureRect(sf::IntRect{0, 0, WIDTH, HEIGHT});
+    
+}
+
+StartState::StartState() : play{false},
+                           startscreen_texture{},
+                           startscreen_texture2{},
+                           startscreen{},
+                           startscreen2{},
+                           font{},
+                           text{},
+                           start_text{},
+                           start_clock{},
+                           view{}
+{
+    if (!font.loadFromFile("resources/font/Heyam.ttf")) {std::cout << "not loading font" << std::endl;}
+
+    //startscreen_texture.setRepeated(true);
+    startscreen.setTexture(Util::Manager::load("resourses/sprites/startscreen.png"));
+    startscreen.setTextureRect(sf::IntRect{0, 0, WIDTH, HEIGHT});
+    
+
+    startscreen2.setTextureRect(sf::IntRect{-WIDTH, 0, WIDTH, HEIGHT});
+    startscreen2.setTexture(Util::Manager::load("resourses/sprites/startscreen2_img.png"));
+    startscreen2.setPosition(-WIDTH, 0);
+    
+    
+}
+
+void GameState::handle()
+{
+    Entity_vector.push_back(std::make_unique<Hero>());
+    Entity_vector.push_back(std::make_unique<Sythe>());
+    for(int i{0}; i < 20; ++i) {
+        Entity_vector.push_back(std::make_unique<Enemy>());
+    }
+}
+
+void GameState::update()
+{
+    /*
+    if(sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)) {
+        end_game = true;
+    }
+    */
+
+    std::vector<Enemy*>enemy_vec{};
+    
+    Hero* h{dynamic_cast<Hero*>(Entity_vector.at(0).get())};
+    Sythe* s{dynamic_cast<Sythe*>(Entity_vector.at(1).get())};
+    
+    
+    for(long unsigned int i{2}; i < Entity_vector.size(); ++i) {
+        Enemy* e = dynamic_cast<Enemy*>(Entity_vector.at(i).get());
+        enemy_vec.push_back(e);
+    }
+
+    sf::Vector2f hero_pos{h->get_sprite().getPosition()};
+
+    for(long unsigned int i{0}; i < enemy_vec.size(); ++i) {
+        enemy_vec.at(i)->move(hero_pos);
+    }
+
+    if(s->get_active())
+    {
+        for(long unsigned int i{0}; i < enemy_vec.size(); ++i) {
+            enemy_vec.at(i)->spawn();
+        }
+        s->spawn(*h);
+        s->active_switch();
+
+    }
+
+    check_collision();
+    
+    h->move();
+    h->level_up();
+    s->move(h->get_current_movement());
+    sf::sleep(sf::seconds(0.004));
+    
+}
+
+void GameState::update_screen(sf::Vector2f const& hero_pos) {
+    //background.setTextureRect(sf::IntRect{WIDTH, -120, WIDTH, HEIGHT});
+    
+    if (hero_pos.y < -120) {
+	background.move(15, 15);
+    } else{
+        if((background.getPosition()).x == 1200){
+            background.setPosition(0,0);
+        } else {
+            background.move(-15, -15);
+        }
+    }
+}
+
+void GameState::render(sf::RenderTarget & target)
+{
+    target.draw(background);
+    target.draw(Entity_vector.at(0)->get_sprite());
+    target.draw(dynamic_cast<Sythe*>(Entity_vector.at(1).get())->get_sprite());
+    for(long unsigned int i{2}; i < Entity_vector.size(); ++i) {
+        target.draw(Entity_vector.at(i)->get_sprite());
+    }
+    
+}
+
+sf::RenderWindow* GameState::get_window()
+{
+    // return &window;
+    sf::RenderWindow* test{};
+    return test;
+}
+
+void GameState::check_collision()
+{
+    for(long unsigned int i{2}; i < Entity_vector.size(); i++) 
+    //förutsatt att ev.at(0) är Hero, och ev.at(1) är powerup
+    //om vi har en boss enemy eller mer powerups så kan dom läggas längst fram
+    //och en if sats kan läggas till och start i kan höjas, det finns säkert en bättre lösning.
+    {
+        if(Entity_vector[0]->handle_collision(*Entity_vector.at(i)))
+        {
+            //dynamic_cast<Hero*>(&(Entity_vector.at(0)))->sub_health(25);
+            Entity_vector.at(0)->sub_health(25);
+        }
+        else if(Entity_vector[1]->handle_collision(*Entity_vector.at(i)))
+        {
+            //dynamic_cast<Enemy*>(&(Entity_vector.at(i)))->sub_health(25);
+            Entity_vector.at(i)->sub_health(25);
+            dynamic_cast<Enemy*>(Entity_vector.at(i).get())->knockback();
+            //dynamic_cast<Hero*>(&(Entity_vector.at(0)))->add_xp(25);
+            //std::cout << typeid(Entity_vector.at(0)).name() << std::endl;
+
+        }
+        // else{
+        //     for(long unsigned int j{i + 1}; j < Entity_vector.size(); j++)
+        //     {
+        //         if(Entity_vector.at(i)->handle_collision(*Entity_vector.at(j)))
+        //         {
+        //             dynamic_cast<Enemy*>(Entity_vector.at(i).get())->knockback(*dynamic_cast<Enemy*>(Entity_vector.at(j).get()));
+        //         }
+        //     }
+        // }
+    }
+}
+
+int GameState::get_next_state()
+{
+    if (end_game)
+    {
+        end_game = false;
+        return START_STATE;
+    }
+    return GAME_STATE;
+}
+
+void GameState::handle_event(sf::Event event)
+{
+    if ( event.type == sf::Event::MouseButtonReleased )
+    {
+        if ( event.mouseButton.button == sf::Mouse::Button::Left )
+        {
+            /*
+            balls.emplace_back (
+                    // get the coordinates of the mouse right now
+                    event.mouseButton.x,
+                    event.mouseButton.y);
+            */
+        }
+    }
+    else if ( event.type == sf::Event::KeyPressed )
+    {
+        if ( event.key.code == sf::Keyboard::Key::Escape )
+            end_game = true;
+    }
+}
+
+
+void GameState::kill(){
+    for (auto& v : Entity_vector){
+	    if (v->get_currhealth() <= 0){
+	    //increase xp
+	    dynamic_cast<Hero*>(Entity_vector.at(0).get())->add_xp(5);
+	    remove(&v);
+	    }           
+    }
+    
+}
+
+void StartState::handle() {
+    // Sprite-config
+    view.reset(sf::FloatRect{-WIDTH, 0, WIDTH, HEIGHT}); // Ersätt första 0:an med -WIDTH samt avkommentera första if-satsen i StartState::handle() för att få en liten slide typ :]
+
+    text.setString("GAME START");
+    text.setFont(font);
+    text.setCharacterSize(96);
+    text.setFillColor(sf::Color(173, 0, 255));
+    auto bounds { text.getGlobalBounds () };
+    text.setPosition((WIDTH - bounds.width) / 2, (HEIGHT - bounds.height) / 2);
+
+    start_text.setString("Start the game by pressing Enter button!");
+    start_text.setFont(font);
+    start_text.setCharacterSize(48);
+    start_text.setFillColor(sf::Color(173, 0, 255));
+    bounds = start_text.getGlobalBounds();
+    start_text.setPosition((WIDTH - bounds.width) / 2, (HEIGHT - bounds.height) / 1.5);
+}
+
+void StartState::render(sf::RenderTarget & target) {
+    target.setView(view);
+    target.draw(startscreen);
+    target.draw(startscreen2);
+    target.draw(text);
+    target.draw(start_text);
+}
+
+void StartState::update() {
+    
+    
+    if(pixels_traveled != WIDTH) {
+        view.move(1, 0);
+        pixels_traveled++;
+    }
+    
+    /*
+    else {
+        pixels_traveled = 0;
+        view.move(-WIDTH, 0);
+    }
+    */
+}
+
+void StartState::handle_event(sf::Event event)
+{
+    if ( event.type == sf::Event::KeyPressed)
+    {
+        if (event.key.code == sf::Keyboard::Key::Return)
+            play = true;
+    }
+}
+
+
+int StartState::get_next_state()
+{
+    if (play)
+    {
+        play = false;
+        return GAME_STATE;
+    }
+    else
+    {
+        return START_STATE;
+    }
+}
+
+
+int Start_menu::Choose_powerup()
+{
+    return 0;
+}
